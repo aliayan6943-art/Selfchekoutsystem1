@@ -13,14 +13,6 @@ import {
   ScrollView,
 } from 'react-native';
 
-
-
-
-
-
-
-
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCartStore, useCartTotal, useCartItemCount } from '@/store/cart-store';
 import { fetchProductByBarcode, MOCK_PRODUCTS } from '@/data/mock-products';
