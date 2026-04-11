@@ -15,7 +15,7 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCartStore, useCartTotal, useCartItemCount } from '@/store/cart-store';
-import { fetchProductByBarcode, MOCK_PRODUCTS } from '@/data/mock-products';
+import { fetchProductByBarcode, ApiError } from '@/services/api';
 
 export default function ScanScreen() {
   const colorScheme = useColorScheme();
@@ -59,29 +59,33 @@ export default function ScanScreen() {
 
     try {
       const product = await fetchProductByBarcode(trimmed);
-      if (product) {
-        addItem(product);
-        setLastAdded(product.name);
-        triggerPulse();
-        setBarcode('');
+      addItem(product);
+      setLastAdded(product.name);
+      triggerPulse();
+      setBarcode('');
 
-        // Clear success message after 3 seconds
-        setTimeout(() => setLastAdded(null), 3000);
-      } else {
+      // Clear success message after 3 seconds
+      setTimeout(() => setLastAdded(null), 3000);
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) {
         Alert.alert(
           'Product Not Found',
-          `No product matches barcode "${trimmed}".\n\nTry one of the demo barcodes listed below.`
+          'Product not found in database'
         );
+      } else if (error instanceof ApiError && error.statusCode === 0) {
+        Alert.alert(
+          'Connection Error',
+          'Could not reach the server. Make sure the backend is running and you are on the same network.'
+        );
+      } else {
+        Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       }
-    } catch {
-      Alert.alert('Error', 'Failed to fetch product. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Quick-add buttons for demo
-  const demoBarcodes = Object.values(MOCK_PRODUCTS).slice(0, 6);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -146,48 +150,20 @@ export default function ScanScreen() {
           </View>
         </View>
 
-        {/* Quick Add Section */}
-        <View style={styles.quickAddSection}>
-          <Text style={styles.quickAddTitle}>Quick Add (Demo Products)</Text>
-          <View style={styles.quickAddGrid}>
-            {demoBarcodes.map((product) => (
-              <TouchableOpacity
-                key={product.barcode}
-                style={styles.quickAddCard}
-                onPress={() => {
-                  setBarcode(product.barcode);
-                }}
-                activeOpacity={0.7}>
-                <Text style={styles.quickAddEmoji}>
-                  {getCategoryEmoji(product.category)}
-                </Text>
-                <Text style={styles.quickAddName} numberOfLines={1}>
-                  {product.name}
-                </Text>
-                <Text style={styles.quickAddPrice}>
-                  ${product.price.toFixed(2)}
-                </Text>
-                <Text style={styles.quickAddBarcode}>{product.barcode}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {/* Server Status Hint */}
+        <View style={styles.hintSection}>
+          <Text style={styles.hintIcon}>🔗</Text>
+          <Text style={styles.hintText}>
+            Connected to live backend — enter any barcode from your database
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function getCategoryEmoji(category: string): string {
-  const map: Record<string, string> = {
-    Dairy: '🥛',
-    Snacks: '🍫',
-    Beverages: '☕',
-    Bakery: '🍞',
-    Grains: '🍚',
-    Oils: '🫒',
-  };
-  return map[category] ?? '📦';
-}
+
+
 
 function createStyles(isDark: boolean) {
   const bg = isDark ? '#0A0A1A' : '#F5F5FA';
@@ -344,52 +320,27 @@ function createStyles(isDark: boolean) {
       letterSpacing: 1,
     },
 
-    // Quick Add
-    quickAddSection: {
-      marginBottom: 20,
-    },
-    quickAddTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: textSecondary,
-      letterSpacing: 0.5,
-      marginBottom: 12,
-      marginLeft: 4,
-    },
-    quickAddGrid: {
+    // Server Hint
+    hintSection: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      alignItems: 'center',
+      backgroundColor: accentGlow,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
       gap: 10,
-    },
-    quickAddCard: {
-      width: '48%' as any,
-      backgroundColor: cardBg,
-      borderRadius: 14,
-      padding: 14,
       borderWidth: 1,
-      borderColor: border,
+      borderColor: isDark ? 'rgba(108, 99, 255, 0.2)' : 'rgba(108, 99, 255, 0.12)',
     },
-    quickAddEmoji: {
-      fontSize: 24,
-      marginBottom: 6,
+    hintIcon: {
+      fontSize: 18,
     },
-    quickAddName: {
+    hintText: {
+      flex: 1,
       fontSize: 13,
-      fontWeight: '700',
-      color: textPrimary,
-      marginBottom: 2,
-    },
-    quickAddPrice: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: accent,
-      marginBottom: 4,
-    },
-    quickAddBarcode: {
-      fontSize: 10,
       fontWeight: '500',
       color: textSecondary,
-      fontFamily: 'monospace',
+      lineHeight: 18,
     },
   });
 }
