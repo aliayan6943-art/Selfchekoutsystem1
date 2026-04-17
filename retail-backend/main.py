@@ -4,21 +4,30 @@ Smart Retail Self-Checkout System — FastAPI Backend
 Async backend serving the Shopper App (React Native) and Guard Dashboard (React.js).
 
 Endpoints:
-  GET  /product/{barcode}  — Fetch product by barcode string
-  POST /cart/sync           — Verify latest prices & stock for offline cart items
+  GET  /product/{barcode}    — Fetch product by barcode string
+  POST /cart/sync            — Verify latest prices & stock for offline cart items
+  POST /auth/request-otp     — Request a one-time password for phone login
+  POST /auth/verify-otp      — Verify OTP, auto-register user, return JWT
+  GET  /auth/me              — Protected: return current user info
 """
 
 from __future__ import annotations
 
-import os
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
 
 import asyncpg
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from config import (
+    DATABASE_URL,
+    LOW_STOCK_THRESHOLD,
+    POOL_MAX_SIZE,
+    POOL_MIN_SIZE,
+)
+from auth import router as auth_router
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 
@@ -28,20 +37,6 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("retail-backend")
-
-# ─── Config ───────────────────────────────────────────────────────────────────
-
-DATABASE_URL: str = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:ayan1234@localhost:5432/smart_retail_db",
-)
-
-# Stock threshold — items at or below this count trigger a warning
-LOW_STOCK_THRESHOLD: int = int(os.getenv("LOW_STOCK_THRESHOLD", "5"))
-
-# Connection pool sizing
-POOL_MIN_SIZE: int = int(os.getenv("POOL_MIN_SIZE", "5"))
-POOL_MAX_SIZE: int = int(os.getenv("POOL_MAX_SIZE", "20"))
 
 # ─── Pydantic Models ─────────────────────────────────────────────────────────
 
@@ -128,7 +123,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Smart Retail Self-Checkout API",
-    version="0.1.0",
+    version="0.2.0",
     description="Backend for the Shopper App and Guard Dashboard.",
     lifespan=lifespan,
 )
@@ -141,6 +136,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Mount Routers ────────────────────────────────────────────────────────────
+
+app.include_router(auth_router)
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────

@@ -1,0 +1,17 @@
+# Smart Retail Self-Checkout — Backend Dependencies
+# ==================================================
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+
+# Database
+asyncpg>=0.30.0
+
+# Data validation (ships with FastAPI but pinned for clarity)
+pydantic>=2.0.0
+
+# Authentication
+PyJWT>=2.10.0       # Stateless JWT access tokens (HS256)
+
+# CORS & middleware (included in FastAPI)
